@@ -1,0 +1,68 @@
+import bs4
+import time
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+
+page_upto = 1 # Set the number of pages to look up to
+output_file_name = "output_links.txt"  # Set the output file name
+
+options = Options()
+options.headless = True
+# Create your driver
+driver = webdriver.Chrome(options=options)
+
+# Define product_links set to store collected links
+product_links = set()
+
+def get_product_links(url):
+    print(url)
+    try:
+        print('getting page')
+        driver.get(url)
+        elem = driver.find_element(By.CLASS_NAME, 'results-base')  # Using By.CLASS_NAME to locate the element
+        code = elem.get_attribute('innerHTML')      
+    except Exception as e:
+        print(e)
+        exit()
+    print("making soup...")
+    soup_res = bs4.BeautifulSoup(code, 'html.parser')   
+    data = soup_res.find_all('li', {'class': 'product-base'})
+    for d in data:
+        link = d.find('a')['href']
+        product_links.add(link)
+
+def get_page_links(page_links):
+    for url in page_links:
+        get_product_links(url)
+
+def main():
+    # Define the types of shirts and their corresponding URLs
+    shirt_types = {
+        "men_full_sleeve": "https://www.myntra.com/men-full-sleeve-shirts?p=",
+        "women_full_sleeve": "https://www.myntra.com/women-full-sleeve-shirts?p=",
+        "men_half_sleeve": "https://www.myntra.com/men-half-sleeve-shirts?p=",
+        "women_half_sleeve": "https://www.myntra.com/women-half-sleeve-shirts?p="
+    }
+
+    # Create page links for each type of shirt
+    page_links = []
+    for shirt_type, url in shirt_types.items():
+        page_links.extend([url + str(i) + '&rows=100' for i in range(1, page_upto + 1)])
+
+    t0 = time.time()
+    print("starting driver")
+    get_page_links(page_links)
+    t1 = time.time()
+    print(f"{t1 - t0} seconds to download {len(page_links)} page links.")
+    print("Closing driver, please wait...")
+    driver.quit()
+    print("Links collected:", len(product_links))
+    with open(output_file_name, 'a', encoding="utf-8") as f:
+        for link in product_links:
+            f.write(link + '\n')
+    print("File saved", output_file_name)
+
+if __name__ == "__main__":
+    main()
+
